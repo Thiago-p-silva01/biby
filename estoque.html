@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle de Estoque</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #fde3f6, #fbbbeb);
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    h1 {
+      text-align: center;
+      color: #1565c0;
+      margin-bottom: 30px;
+    }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    input, select {
+      flex: 1 1 200px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0d47a1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #e3f2fd;
+      color: #0d47a1;
+    }
+    tr:hover {
+      background-color: #f1f8ff;
+    }
+    .baixo {
+      background-color: #ffe0e0;
+      color: #b30000;
+      font-weight: bold;
+    }
+    .negativo {
+      color: red;
+      font-weight: bold;
+    }
+    .remover, .retirar {
+      background-color: #e53935;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .remover:hover, .retirar:hover {
+      background-color: #b71c1c;
+    }
+    .btn-voltar {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      background-color: #1976d2;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      z-index: 10;
+    }
+    .btn-voltar:hover {
+      background-color: #0d47a1;
+    }
+    @media (max-width: 600px) {
+      form {
+        flex-direction: column;
+      }
+      input, select, button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="dashboard.html" class="btn-voltar"> Voltar</a>
+    <h1>📦 Controle de Estoque</h1>
+
+    <form id="formEstoque">
+      <input type="text" id="produto" placeholder="Nome do Produto" required />
+      <input type="number" id="quantidade" placeholder="Quantidade" required />
+      <select id="categoria" required>
+        <option value="">Categoria</option>
+        <option value="Beleza">Beleza</option>
+        <option value="Higiene">Higiene</option>
+        <option value="Acessórios">Acessórios</option>
+      </select>
+      <button type="submit">Adicionar</button>
+    </form>
+
+    <h2>📋 Estoque Atual</h2>
+    <table id="tabelaEstoque">
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Quantidade</th>
+          <th>Categoria</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot,
+      deleteDoc,
+      updateDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3RjAQZZDzsblZsyBO3g5sSJ-_1FtUcmc",
+      authDomain: "salao-de-cabelo-152d1.firebaseapp.com",
+      projectId: "salao-de-cabelo-152d1",
+      storageBucket: "salao-de-cabelo-152d1.appspot.com", // ✅ corrigido
+      messagingSenderId: "387341607426",
+      appId: "1:387341607426:web:e47e62d64deed0dd7b7d1b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const form = document.getElementById('formEstoque');
+    const tabela = document.querySelector('#tabelaEstoque tbody');
+
+    function atualizarEstiloQuantidade(celula, quantidade) {
+      celula.classList.remove('baixo', 'negativo');
+      if (parseInt(quantidade) < 0) {
+        celula.classList.add('negativo');
+      } else if (parseInt(quantidade) < 5) {
+        celula.classList.add('baixo');
+      }
+    }
+
+    function adicionarLinha(id, produto, quantidade, categoria) {
+      if (!produto || quantidade === undefined || quantidade === null || isNaN(quantidade) || !categoria) return;
+
+      const linha = document.createElement('tr');
+
+      linha.innerHTML = `
+        <td>${produto}</td>
+        <td>${quantidade}</td>
+        <td>${categoria}</td>
+        <td>
+          <button class="retirar">Retirar</button>
+          <button class="remover">🗑️</button>
+        </td>
+      `;
+
+      const celulaQuantidade = linha.children[1];
+      atualizarEstiloQuantidade(celulaQuantidade, quantidade);
+
+      linha.querySelector('.remover').addEventListener('click', async () => {
+        await deleteDoc(doc(db, "estoque", id));
+      });
+
+      linha.querySelector('.retirar').addEventListener('click', async () => {
+        let qtd = parseInt(celulaQuantidade.textContent);
+        qtd -= 1;
+        celulaQuantidade.textContent = qtd;
+        atualizarEstiloQuantidade(celulaQuantidade, qtd);
+        await updateDoc(doc(db, "estoque", id), { quantidade: qtd });
+      });
+
+      tabela.appendChild(linha);
+    }
+
+    onSnapshot(collection(db, "estoque"), (snapshot) => {
+      tabela.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        adicionarLinha(docSnap.id, item.produto, item.quantidade, item.categoria);
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const produto = document.getElementById('produto').value;
+      const quantidade = parseInt(document.getElementById('quantidade').value);
+      const categoria = document.getElementById('categoria').value;
+
+      await addDoc(collection(db, "estoque"), {
+        produto,
+        quantidade,
+        categoria
+      });
+
+      form.reset();
+    });
+  </script>
+</body>
+</html>

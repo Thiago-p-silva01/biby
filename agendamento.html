@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenda - Biby Cabeleireira</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #ffb6c1, #ff69b4);
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .back-btn {
+      background-color: #d81b60;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 20px;
+      display: inline-block;
+      text-decoration: none;
+    }
+    main {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 900px;
+      background-color: #fff;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      padding: 25px;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #d81b60;
+      margin-bottom: 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    thead {
+      background-color: #f8bbd0;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+    .confirmar-btn {
+      background-color: #25D366;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .delete-btn {
+      background-color: #e53935;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <a href="dashboard.html" class="back-btn"> Voltar</a>
+  <main>
+    <h1>📅 Agenda</h1>
+    <!-- Tabela de pendentes -->
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Data/Hora</th>
+          <th>Serviço</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody id="lista-agendamentos"></tbody>
+    </table>
+
+    <!-- Histórico de confirmados -->
+    <h2>✅ Histórico de Confirmados</h2>
+    <button id="apagarHistorico" class="delete-btn">Apagar Histórico</button>
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Data/Hora</th>
+          <th>Serviço</th>
+        </tr>
+      </thead>
+      <tbody id="lista-confirmados"></tbody>
+    </table>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      onSnapshot,
+      updateDoc,
+      doc,
+      query,
+      where,
+      getDocs,
+      deleteDoc
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3RjAQZZDzsblZsyBO3g5sSJ-_1FtUcmc",
+      authDomain: "salao-de-cabelo-152d1.firebaseapp.com",
+      projectId: "salao-de-cabelo-152d1",
+      storageBucket: "salao-de-cabelo-152d1.appspot.com", // ✅ corrigido
+      messagingSenderId: "387341607426",
+      appId: "1:387341607426:web:e47e62d64deed0dd7b7d1b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tbodyPendentes = document.getElementById("lista-agendamentos");
+    const tbodyConfirmados = document.getElementById("lista-confirmados");
+
+    // 🔥 Consulta só os agendamentos pendentes
+    const qPendentes = query(collection(db, "agendamentos"), where("status", "==", "pendente"));
+
+    onSnapshot(qPendentes, (snapshot) => {
+      tbodyPendentes.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const ag = docSnap.data();
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${ag.nome}</td>
+          <td>${ag.data} ${ag.hora}</td>
+          <td>${ag.servico}</td>
+          <td>
+            <button class="confirmar-btn">Confirmar</button>
+          </td>
+        `;
+
+        tr.querySelector(".confirmar-btn").addEventListener("click", async () => {
+          await updateDoc(doc(db, "agendamentos", docSnap.id), { status: "confirmado" });
+          const mensagem = `Olá ${ag.nome}! ✨ Seu agendamento para ${ag.servico} às ${ag.hora} foi confirmado pela Biby Cabeleireira 💅`;
+          if (ag.telefone) {
+            const url = `https://wa.me/${ag.telefone}?text=${encodeURIComponent(mensagem)}`;
+            window.open(url, "_blank");
+          }
+        });
+
+        tbodyPendentes.appendChild(tr);
+      });
+    });
+
+    // 🔥 Consulta os agendamentos confirmados (histórico)
+    const qConfirmados = query(collection(db, "agendamentos"), where("status", "==", "confirmado"));
+
+    onSnapshot(qConfirmados, (snapshot) => {
+      tbodyConfirmados.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const ag = docSnap.data();
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${ag.nome}</td>
+          <td>${ag.data} ${ag.hora}</td>
+          <td>${ag.servico}</td>
+        `;
+
+        tbodyConfirmados.appendChild(tr);
+      });
+    });
+
+    // 🔥 Botão para apagar histórico
+    document.getElementById("apagarHistorico").addEventListener("click", async () => {
+      if (confirm("Tem certeza que deseja apagar todo o histórico de confirmados?")) {
+        const snapshot = await getDocs(qConfirmados);
+        snapshot.forEach(async (docSnap) => {
+          await deleteDoc(doc(db, "agendamentos", docSnap.id));
+        });
+        alert("Histórico apagado com sucesso!");
+      }
+    });
+  </script>
+</body>
+</html>

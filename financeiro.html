@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financeiro</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+      color: #333;
+    }
+    .dashboard-container {
+      max-width: 800px;
+      margin: 40px auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #ad1457;
+      margin-bottom: 30px;
+    }
+    .btn-voltar-interno {
+      display: inline-block;
+      margin-bottom: 20px;
+      background-color: #d81b60;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    .btn-voltar-interno:hover {
+      background-color: #ad1457;
+    }
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 30px;
+      align-items: center;
+    }
+    input, select {
+      flex: 1 1 200px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+    .campo-valor {
+      position: relative;
+      flex: 1 1 200px;
+    }
+    .campo-valor .prefixo {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      font-size: 1em;
+      font-weight: bold;
+      color: #555;
+      pointer-events: none;
+      line-height: 1;
+    }
+    .campo-valor input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    .btn-registrar {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .btn-registrar:hover {
+      background-color: #388E3C;
+    }
+    h2 {
+      color: #880e4f;
+      margin-bottom: 15px;
+    }
+    #listaFinanceiro {
+      background-color: #fce4ec;
+      border-radius: 10px;
+      padding: 20px;
+      min-height: 100px;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
+    }
+    #listaFinanceiro p {
+      margin: 8px 0;
+      font-size: 1.1em;
+    }
+    @media (max-width: 600px) {
+      form { flex-direction: column; }
+      input, select, .btn-registrar { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <a href="dashboard.html" class="btn-voltar-interno"> Voltar</a>
+    <h1>Controle Financeiro</h1>
+
+    <form id="formFinanceiro">
+      <input type="text" id="dataFinanceiro" placeholder="dd/mm/aaaa" required />
+      <div class="campo-valor">
+        <span class="prefixo">R$</span>
+        <input type="number" id="valor" placeholder="VALOR TOTAL" required />
+      </div>
+      <select id="tipo" required>
+        <option value="">Selecione o tipo</option>
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+      <button type="submit" class="btn-registrar">Registrar</button>
+    </form>
+
+    <h2>📋 Movimentações</h2>
+    <div id="listaFinanceiro"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3RjAQZZDzsblZsyBO3g5sSJ-_1FtUcmc",
+      authDomain: "salao-de-cabelo-152d1.firebaseapp.com",
+      projectId: "salao-de-cabelo-152d1",
+      storageBucket: "salao-de-cabelo-152d1.appspot.com", // ✅ corrigido
+      messagingSenderId: "387341607426",
+      appId: "1:387341607426:web:e47e62d64deed0dd7b7d1b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const campoData = document.getElementById('dataFinanceiro');
+    let ultimaTecla = '';
+
+    campoData.addEventListener('keydown', function(e) {
+      ultimaTecla = e.key;
+    });
+
+    campoData.addEventListener('input', function(e) {
+      if (ultimaTecla === 'Backspace' || ultimaTecla === 'Delete') return;
+      let valor = e.target.value.replace(/\D/g, '');
+      if (valor.length >= 2) valor = valor.slice(0, 2) + '/' + valor.slice(2);
+      if (valor.length >= 5) valor = valor.slice(0, 5) + '/' + valor.slice(5, 9);
+      e.target.value = valor;
+    });
+
+    const form = document.getElementById('formFinanceiro');
+    const lista = document.getElementById('listaFinanceiro');
+
+    // 🔥 Escuta em tempo real os registros do Firestore
+    onSnapshot(collection(db, "financeiro"), (snapshot) => {
+      lista.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const reg = docSnap.data();
+        if (!reg.data || reg.valor === undefined || !reg.tipo) return;
+
+        const sinal = reg.tipo === 'entrada' ? '+' : '–';
+        const cor = reg.tipo === 'entrada' ? 'green' : 'red';
+
+        const item = document.createElement('p');
+        item.textContent = `${reg.data} — ${sinal} R$ ${parseFloat(reg.valor).toFixed(2)} (${reg.tipo})`;
+        item.style.color = cor;
+        item.style.fontWeight = 'bold';
+
+        lista.appendChild(item);
+      });
+    });
+
+    // 🔥 Adicionar novo registro no Firestore
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = document.getElementById('dataFinanceiro').value;
+      const valor = parseFloat(document.getElementById('valor').value);
+      const tipo = document.getElementById('tipo').value;
+
+      if (!data || isNaN(valor) || !tipo) {
+        alert("Preencha todos os campos corretamente.");
+        return;
+      }
+
+      await addDoc(collection(db, "financeiro"), {
+        data,
+        valor,
+        tipo
+      });
+
+      form.reset();
+    });
+  </script>
+</body>
+</html>

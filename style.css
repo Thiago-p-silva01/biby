@@ -1,0 +1,124 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(to right, #f8cdda, #f1a7f1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  background-color: #d63384;
+  color: white;
+  border: none;
+  padding: 0.8rem;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+}
+
+button:hover {
+  background-color: #c2185b;
+}
+
+#installBtn {
+  margin-top: 1rem;
+  background-color: #6f42c1;
+  color: white;
+  border: none;
+  padding: 0.8rem;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+}
+
+#installBtn:hover {
+  background-color: #5a32a3;
+}
+.dashboard-container {
+  padding: 2rem;
+  max-width: 800px;
+  margin: auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+.menu {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 2rem;
+}
+
+.menu button {
+  padding: 0.8rem 1.2rem;
+  background-color: #d63384;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.menu button:hover {
+  background-color: #c2185b;
+}
+
+.section {
+  display: none;
+}
+
+.section:first-child {
+  display: block;
+}
+
+.painel-imagem {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.dashboard-container {
+  padding: 2rem;
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+.painel-bloco {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.painel-imagem {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: 1rem 0;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}

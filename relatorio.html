@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatório Financeiro</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+      color: #333;
+    }
+    .dashboard-container {
+      max-width: 800px;
+      margin: 40px auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1, h3 {
+      text-align: center;
+      color: #ad1457;
+      margin-bottom: 20px;
+    }
+    label, p {
+      font-size: 1.1em;
+      margin: 10px 0;
+    }
+    select {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 20px;
+    }
+    canvas {
+      margin-top: 20px;
+      display: block;
+      max-width: 100%;
+    }
+    .btn-area {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    .btn {
+      background-color: #d81b60;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background-color: #ad1457; }
+    .btn-apagar { background-color: #555; }
+    .btn-apagar:hover { background-color: #333; }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1>📈 Relatório Financeiro</h1>
+
+    <label for="periodo">Escolha o mês:</label>
+    <select id="periodo"></select>
+
+    <p>Total do Período: R$ <span id="totalPeriodo">0.00</span></p>
+
+    <h3>📊 Gráfico de Saldo por Dia</h3>
+    <canvas id="graficoFinanceiro" width="600" height="300"></canvas>
+
+    <div class="btn-area">
+      <a href="dashboard.html" class="btn"> Voltar</a>
+      <button id="btnApagarTudo" class="btn btn-apagar">🗑️ Apagar Tudo</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      onSnapshot,
+      deleteDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3RjAQZZDzsblZsyBO3g5sSJ-_1FtUcmc",
+      authDomain: "salao-de-cabelo-152d1.firebaseapp.com",
+      projectId: "salao-de-cabelo-152d1",
+      storageBucket: "salao-de-cabelo-152d1.appspot.com", // ✅ corrigido
+      messagingSenderId: "387341607426",
+      appId: "1:387341607426:web:e47e62d64deed0dd7b7d1b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const selectPeriodo = document.getElementById('periodo');
+    const totalPeriodo = document.getElementById('totalPeriodo');
+    const canvas = document.getElementById('graficoFinanceiro');
+    const btnApagar = document.getElementById('btnApagarTudo');
+    let grafico;
+    let registros = [];
+
+    function agruparPorMes(registros) {
+      const meses = new Set();
+      registros.forEach(reg => {
+        const [dia, mes, ano] = reg.data.split('/');
+        meses.add(`${mes}/${ano}`);
+      });
+      return Array.from(meses).sort();
+    }
+
+    function atualizarSelectMeses(meses) {
+      selectPeriodo.innerHTML = '';
+      meses.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m;
+        option.textContent = m;
+        selectPeriodo.appendChild(option);
+      });
+    }
+
+    function atualizarRelatorio() {
+      const periodoSelecionado = selectPeriodo.value;
+      const dadosFiltrados = registros.filter(reg => {
+        const [dia, mes, ano] = reg.data.split('/');
+        return `${mes}/${ano}` === periodoSelecionado;
+      });
+
+      let total = 0;
+      const agrupadoPorDia = {};
+
+      dadosFiltrados.forEach(reg => {
+        const valor = reg.tipo === 'entrada' ? reg.valor : -reg.valor;
+        total += valor;
+        if (!agrupadoPorDia[reg.data]) agrupadoPorDia[reg.data] = 0;
+        agrupadoPorDia[reg.data] += valor;
+      });
+
+      totalPeriodo.textContent = total.toFixed(2);
+
+      const labels = Object.keys(agrupadoPorDia);
+      const valores = Object.values(agrupadoPorDia);
+
+      if (grafico) grafico.destroy();
+
+      const ctx = canvas.getContext('2d');
+      grafico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Saldo por Dia',
+            data: valores,
+            backgroundColor: '#d81b60',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: value => 'R$ ' + value.toFixed(2) }
+            }
+          }
+        }
+      });
+    }
+
+    // 🔥 Escuta em tempo real os registros do Firestore
+    onSnapshot(collection(db, "financeiro"), (snapshot) => {
+      registros = [];
+      snapshot.forEach((docSnap) => {
+        const reg = docSnap.data();
+        registros.push(reg);
+      });
+      const meses = agruparPorMes(registros);
+      atualizarSelectMeses(meses);
+      atualizarRelatorio();
+    });
+
+    // 🔥 Apagar todos os registros do Firestore
+    btnApagar.addEventListener('click', async () => {
+      const confirmar = confirm("Tem certeza que deseja apagar todos os registros?");
+      if (!confirmar) return;
+
+      const snapshot = await onSnapshot(collection(db, "financeiro"), async (snap) => {
+        snap.forEach(async (docSnap) => {
+          await deleteDoc(doc(db, "financeiro", docSnap.id));
+        });
+      });
+
+      registros = [];
+      selectPeriodo.innerHTML = '';
+      totalPeriodo.textContent = '0.00';
+      if (grafico) grafico.destroy();
+    });
+
+    selectPeriodo.addEventListener('change', atualizarRelatorio);
+  </script>
+</body>
+</html>
